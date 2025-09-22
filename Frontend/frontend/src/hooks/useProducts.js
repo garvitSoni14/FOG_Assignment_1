@@ -9,22 +9,19 @@ export const useProducts = (initialFilters = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch products with current filters
   const fetchProducts = useCallback(async (newFilters = {}) => {
     setLoading(true);
     setError(null);
-
     try {
       const queryParams = apiService.buildProductQuery({ ...filters, ...newFilters });
       const response = await apiService.getProducts(queryParams);
 
-      if (response.success) {
-        setProducts(response.data.products);
-        setPagination(apiService.formatPagination(response.data.pagination));
-        setFilters({ ...filters, ...newFilters });
-      } else {
-        throw new Error(response.message || 'Failed to fetch products');
+      // response is expected to be an array or an object with products
+      setProducts(Array.isArray(response) ? response : response.products || []);
+      if (response.pagination) {
+        setPagination(apiService.formatPagination(response.pagination));
       }
+      setFilters({ ...filters, ...newFilters });
     } catch (err) {
       setError(err.message);
       console.error('Error fetching products:', err);
@@ -33,46 +30,21 @@ export const useProducts = (initialFilters = {}) => {
     }
   }, [filters]);
 
-  // Update filters and fetch products
-  const updateFilters = useCallback((newFilters) => {
-    fetchProducts(newFilters);
-  }, [fetchProducts]);
-
-  // Change page
-  const changePage = useCallback((page) => {
-    fetchProducts({ page });
-  }, [fetchProducts]);
-
-  // Change page size
-  const changePageSize = useCallback((limit) => {
-    fetchProducts({ limit, page: 1 }); // Reset to first page when changing page size
-  }, [fetchProducts]);
-
-  // Sort products
-  const sortProducts = useCallback((sortBy, sortOrder = 'asc') => {
-    fetchProducts({ sortBy, sortOrder, page: 1 }); // Reset to first page when sorting
-  }, [fetchProducts]);
-
-  // Search products
-  const searchProducts = useCallback((search) => {
-    fetchProducts({ search, page: 1 }); // Reset to first page when searching
-  }, [fetchProducts]);
-
-  // Clear all filters
+  const updateFilters = useCallback((newFilters) => fetchProducts(newFilters), [fetchProducts]);
+  const changePage = useCallback((page) => fetchProducts({ page }), [fetchProducts]);
+  const changePageSize = useCallback((limit) => fetchProducts({ limit, page: 1 }), [fetchProducts]);
+  const sortProducts = useCallback((sortBy, sortOrder = 'asc') => fetchProducts({ sortBy, sortOrder, page: 1 }), [fetchProducts]);
+  const searchProducts = useCallback((search) => fetchProducts({ search, page: 1 }), [fetchProducts]);
   const clearFilters = useCallback(() => {
-    const clearedFilters = {
+    fetchProducts({
       page: 1,
       limit: filters.limit || 16,
       sortBy: 'createdAt',
-      sortOrder: 'desc',
-    };
-    fetchProducts(clearedFilters);
+      sortOrder: 'desc'
+    });
   }, [fetchProducts, filters.limit]);
 
-  // Load initial products
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  useEffect(() => { fetchProducts(); }, []);
 
   return {
     products,
@@ -86,7 +58,7 @@ export const useProducts = (initialFilters = {}) => {
     sortProducts,
     searchProducts,
     clearFilters,
-    refetch: fetchProducts,
+    refetch: fetchProducts
   };
 };
 
@@ -112,20 +84,12 @@ export const useFilterOptions = () => {
   const fetchFilterOptions = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const [filtersResponse, paginationResponse] = await Promise.all([
-        apiService.getFilterOptions(),
-        apiService.getPaginationOptions(),
-      ]);
+      const filtersResponse = await apiService.getFilterOptions();
+      const paginationResponse = await apiService.getPaginationOptions();
 
-      if (filtersResponse.success) {
-        setFilterOptions(filtersResponse.data);
-      }
-
-      if (paginationResponse.success) {
-        setPaginationOptions(paginationResponse.data);
-      }
+      setFilterOptions(filtersResponse || {});
+      setPaginationOptions(paginationResponse || {});
     } catch (err) {
       setError(err.message);
       console.error('Error fetching filter options:', err);
@@ -134,20 +98,12 @@ export const useFilterOptions = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchFilterOptions();
-  }, [fetchFilterOptions]);
+  useEffect(() => { fetchFilterOptions(); }, [fetchFilterOptions]);
 
-  return {
-    filterOptions,
-    paginationOptions,
-    loading,
-    error,
-    refetch: fetchFilterOptions,
-  };
+  return { filterOptions, paginationOptions, loading, error, refetch: fetchFilterOptions };
 };
 
-// Hook for managing single product
+// Hook for managing a single product
 export const useProduct = (productId) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -155,17 +111,11 @@ export const useProduct = (productId) => {
 
   const fetchProduct = useCallback(async (id) => {
     if (!id) return;
-
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiService.getProduct(id);
-      if (response.success) {
-        setProduct(apiService.formatProduct(response.data));
-      } else {
-        throw new Error(response.message || 'Failed to fetch product');
-      }
+      setProduct(response || null);
     } catch (err) {
       setError(err.message);
       console.error('Error fetching product:', err);
@@ -174,16 +124,9 @@ export const useProduct = (productId) => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchProduct(productId);
-  }, [productId, fetchProduct]);
+  useEffect(() => { fetchProduct(productId); }, [productId, fetchProduct]);
 
-  return {
-    product,
-    loading,
-    error,
-    refetch: () => fetchProduct(productId),
-  };
+  return { product, loading, error, refetch: () => fetchProduct(productId) };
 };
 
 // Hook for product CRUD operations
@@ -194,65 +137,38 @@ export const useProductCRUD = () => {
   const createProduct = useCallback(async (productData) => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiService.createProduct(productData);
-      if (response.success) {
-        return { success: true, data: apiService.formatProduct(response.data) };
-      } else {
-        throw new Error(response.message || 'Failed to create product');
-      }
+      return response || null;
     } catch (err) {
       setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
+      return null;
+    } finally { setLoading(false); }
   }, []);
 
   const updateProduct = useCallback(async (id, productData) => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiService.updateProduct(id, productData);
-      if (response.success) {
-        return { success: true, data: apiService.formatProduct(response.data) };
-      } else {
-        throw new Error(response.message || 'Failed to update product');
-      }
+      return response || null;
     } catch (err) {
       setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
+      return null;
+    } finally { setLoading(false); }
   }, []);
 
   const deleteProduct = useCallback(async (id) => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiService.deleteProduct(id);
-      if (response.success) {
-        return { success: true, data: response.data };
-      } else {
-        throw new Error(response.message || 'Failed to delete product');
-      }
+      return response || null;
     } catch (err) {
       setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
+      return null;
+    } finally { setLoading(false); }
   }, []);
 
-  return {
-    createProduct,
-    updateProduct,
-    deleteProduct,
-    loading,
-    error,
-  };
+  return { createProduct, updateProduct, deleteProduct, loading, error };
 };

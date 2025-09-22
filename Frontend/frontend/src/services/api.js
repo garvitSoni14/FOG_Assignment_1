@@ -1,5 +1,5 @@
 // API Service for Furniro Backend Integration
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 class ApiService {
   // Generic request method
@@ -15,12 +15,24 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+
+      // Handle empty responses
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(`Invalid JSON response from ${url}: ${text}`);
+      }
 
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
 
+      // Unwrap common API envelope { success, data }
+      if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+        return data.data;
+      }
       return data;
     } catch (error) {
       console.error('API request failed:', error);
@@ -59,8 +71,6 @@ class ApiService {
   }
 
   // ==================== PRODUCT ENDPOINTS ====================
-
-  // Get products with filtering, sorting, and pagination
   async getProducts(params = {}) {
     const defaultParams = {
       page: 1,
@@ -68,56 +78,56 @@ class ApiService {
       sortBy: 'createdAt',
       sortOrder: 'desc',
     };
-
     const queryParams = { ...defaultParams, ...params };
     return this.get('/products', queryParams);
   }
 
-  // Get single product by ID
   async getProduct(id) {
     return this.get(`/products/${id}`);
   }
 
-  // Create new product
   async createProduct(productData) {
     return this.post('/products', productData);
   }
 
-  // Update product
   async updateProduct(id, productData) {
     return this.put(`/products/${id}`, productData);
   }
 
-  // Delete product
   async deleteProduct(id) {
     return this.delete(`/products/${id}`);
   }
 
-  // Bulk create products
   async bulkCreateProducts(products) {
     return this.post('/products/bulk', { products });
   }
 
   // ==================== FILTER & PAGINATION ENDPOINTS ====================
-
-  // Get filter options
   async getFilterOptions() {
     return this.get('/products/filters');
   }
 
-  // Get pagination options
   async getPaginationOptions() {
-    return this.get('/products/pagination-options');
+    // Backend route not available in deployment; return sensible defaults
+    return {
+      pageSizeOptions: [
+        { value: 8, label: '8 per page' },
+        { value: 16, label: '16 per page' },
+        { value: 24, label: '24 per page' },
+        { value: 32, label: '32 per page' },
+        { value: 48, label: '48 per page' }
+      ],
+      totalProducts: 0,
+      defaultPageSize: 16,
+      maxPageSize: 100
+    };
   }
 
-  // Get product statistics
   async getProductStats() {
     return this.get('/products/stats');
   }
 
   // ==================== UTILITY METHODS ====================
-
-  // Build query parameters for product filtering
   buildProductQuery(filters = {}) {
     const {
       page = 1,
@@ -135,14 +145,8 @@ class ApiService {
       rating,
     } = filters;
 
-    const params = {
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-    };
+    const params = { page, limit, sortBy, sortOrder };
 
-    // Add filters only if they have values
     if (brand) params.brand = Array.isArray(brand) ? brand : [brand];
     if (category) params.category = Array.isArray(category) ? category : [category];
     if (minPrice !== undefined) params.minPrice = minPrice;
@@ -156,7 +160,6 @@ class ApiService {
     return params;
   }
 
-  // Format product data for display
   formatProduct(product) {
     return {
       id: product._id,
@@ -165,7 +168,7 @@ class ApiService {
       category: product.category,
       price: product.price,
       oldPrice: product.oldPrice,
-      imageUrl: product.imageUrl,
+      imageUrl: product.imageUrl || product.image,
       description: product.description,
       badge: product.badge,
       inStock: product.inStock,
@@ -177,7 +180,6 @@ class ApiService {
     };
   }
 
-  // Format pagination data
   formatPagination(pagination) {
     return {
       currentPage: pagination.currentPage,
@@ -196,11 +198,9 @@ class ApiService {
   }
 }
 
-// Create and export a singleton instance
 const apiService = new ApiService();
 export default apiService;
 
-// Export individual methods for convenience
 export const {
   getProducts,
   getProduct,
