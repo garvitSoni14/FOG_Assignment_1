@@ -1,0 +1,16 @@
+# Node
+node_modules           # Ignore all node_modules folders
+npm-debug.log          # Ignore npm debug logs
+yarn-error.log         # Ignore yarn error logs
+
+# Env
+.env                   # Ignore environment variables (secrets)
+.env.local
+.env.*.local
+
+# Build
+/build                 # Ignore build folder for frontend
+/dist                  # Ignore distribution folder
+
+# Others
+.DS_Store              # Mac system file

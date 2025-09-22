@@ -1,0 +1,4 @@
+[
+  { "id": "p1", "name": "Alpha Phone", "brand": "Alpha", "category": "Phone", "price": 799, "imageUrl": "/static/product.png" },
+  { "id": "p2", "name": "Beta Watch", "brand": "Beta", "category": "Watch", "price": 199, "imageUrl": "/static/product.png" }
+]

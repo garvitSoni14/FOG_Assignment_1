@@ -1,0 +1,15 @@
+:root {
+  --color-primary: #ff6f61;       /* Accent (buttons, hover, highlights) */
+  --color-dark: #333333;          /* Dark text */
+  --color-grey: #999999;          /* Subtext */
+  --color-light: #f9f1e7;         /* Light backgrounds */
+  --color-bg: #faf3ea;            /* Section bg (footer etc.) */
+  --color-white: #ffffff;
+
+  --font-main: 'Poppins', sans-serif;
+  --font-brand: 'SkinSlinic', sans-serif;
+
+  --fs-heading: 36px;
+  --fs-subheading: 18px;
+  --fs-text: 14px;
+}
